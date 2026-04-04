@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Awi – Communication App</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2300a884'/><text x='50' y='68' font-size='60' font-weight='800' fill='white' text-anchor='middle' font-family='Arial'>A</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;background:#111b21;overflow:hidden;color:#e9edef;font-size:14px}
+input,button{font-family:inherit}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#374151;border-radius:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.fade-in{animation:fadeIn 0.3s ease}
+.shake{animation:shake 0.3s ease}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// AWI – WhatsApp-Style Communication App (Pure JS, No Babel)
+// ═══════════════════════════════════════════════════════════════════════════
+
+var e=React.createElement;
+var useState=React.useState;
+var useEffect=React.useEffect;
+var useRef=React.useRef;
+
+// Colors
+var C={bg:"#111b21",deeper:"#0b141a",panel:"#202c33",hover:"#2a3942",input:"#2a3942",green:"#00a884",greenDk:"#008069",bubbleMe:"#005c4b",bubbleThem:"#202c33",txt:"#e9edef",txt2:"#8696a0",txt3:"#667781",border:"#2a3942",red:"#ea0038",blue:"#53bdeb",yellow:"#f59e0b"};
+
+// ── SVG Icon helper ─────────────────────────────────────────────────────────
+function Svg(p,paths){
+  return e("svg",{width:p.size||20,height:p.size||20,viewBox:"0 0 24 24",fill:"none",stroke:p.color||C.txt2,strokeWidth:"1.8",strokeLinecap:"round",strokeLinejoin:"round",style:p.st||{}},paths);
+}
+function ChatIc(p){return Svg(p,e("path",{d:"M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"}))}
+function PhoneIc(p){return Svg(p,e("path",{d:"M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"}))}
+function StatusIc(p){return Svg(p,[e("circle",{key:"c",cx:12,cy:12,r:10}),e("line",{key:"l1",x1:12,y1:8,x2:12,y2:12}),e("line",{key:"l2",x1:12,y1:16,x2:12.01,y2:16})])}
+function UsersIc(p){return Svg(p,[e("path",{key:"p1",d:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"}),e("circle",{key:"c1",cx:9,cy:7,r:4}),e("path",{key:"p2",d:"M23 21v-2a4 4 0 00-3-3.87"}),e("path",{key:"p3",d:"M16 3.13a4 4 0 010 7.75"})])}
+function ChannelIc(p){return Svg(p,[e("rect",{key:"r",x:2,y:7,width:20,height:15,rx:2,ry:2}),e("polyline",{key:"pl",points:"17 2 12 7 7 2"})])}
+function SearchIc(p){return Svg(p,[e("circle",{key:"c",cx:11,cy:11,r:8}),e("line",{key:"l",x1:21,y1:21,x2:16.65,y2:16.65})])}
+function SendIc(p){return Svg(p,e("path",{d:"M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"}))}
+function MicIc(p){return Svg(p,[e("path",{key:"p1",d:"M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"}),e("path",{key:"p2",d:"M19 10v2a7 7 0 01-14 0v-2"}),e("line",{key:"l1",x1:12,y1:19,x2:12,y2:23}),e("line",{key:"l2",x1:8,y1:23,x2:16,y2:23})])}
+function MicOffIc(p){return Svg(p,[e("line",{key:"l",x1:1,y1:1,x2:23,y2:23}),e("path",{key:"p1",d:"M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"}),e("path",{key:"p2",d:"M17 16.95A7 7 0 015 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"}),e("line",{key:"l1",x1:12,y1:19,x2:12,y2:23}),e("line",{key:"l2",x1:8,y1:23,x2:16,y2:23})])}
+function VideoIc(p){return Svg(p,[e("path",{key:"p",d:"M23 7l-7 5 7 5V7z"}),e("rect",{key:"r",x:1,y:5,width:15,height:14,rx:2,ry:2})])}
+function VideoOffIc(p){return Svg(p,[e("path",{key:"p",d:"M16 16v1a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h2m5.66 0H14a2 2 0 012 2v3.34l1 1L23 7v10"}),e("line",{key:"l",x1:1,y1:1,x2:23,y2:23})])}
+function BackIc(p){return Svg(p,[e("line",{key:"l",x1:19,y1:12,x2:5,y2:12}),e("polyline",{key:"pl",points:"12 19 5 12 12 5"})])}
+function PlusIc(p){return Svg(p,[e("line",{key:"l1",x1:12,y1:5,x2:12,y2:19}),e("line",{key:"l2",x1:5,y1:12,x2:19,y2:12})])}
+function CheckIc(p){return Svg(p,[e("path",{key:"p1",d:"M18 6L7 17l-5-5"}),e("path",{key:"p2",d:"M22 10l-9.17 9L10 16.17"})])}
+function LockIc(p){return Svg(p,[e("rect",{key:"r",x:3,y:11,width:18,height:11,rx:2,ry:2}),e("path",{key:"p",d:"M7 11V7a5 5 0 0110 0v4"})])}
+function SettingsIc(p){return Svg(p,[e("circle",{key:"c",cx:12,cy:12,r:3}),e("path",{key:"p",d:"M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"})])}
+function UserIc(p){return Svg(p,[e("path",{key:"p",d:"M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"}),e("circle",{key:"c",cx:12,cy:7,r:4})])}
+function MonitorIc(p){return Svg(p,[e("rect",{key:"r",x:2,y:3,width:20,height:14,rx:2,ry:2}),e("line",{key:"l1",x1:8,y1:21,x2:16,y2:21}),e("line",{key:"l2",x1:12,y1:17,x2:12,y2:21})])}
+function BellIc(p){return Svg(p,[e("path",{key:"p1",d:"M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"}),e("path",{key:"p2",d:"M13.73 21a2 2 0 01-3.46 0"})])}
+function KeyIc(p){return Svg(p,e("path",{d:"M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"}))}
+function HelpIc(p){return Svg(p,[e("circle",{key:"c",cx:12,cy:12,r:10}),e("path",{key:"p",d:"M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"}),e("line",{key:"l",x1:12,y1:17,x2:12.01,y2:17})])}
+function KeyboardIc(p){return Svg(p,[e("rect",{key:"r",x:2,y:4,width:20,height:16,rx:2,ry:2}),e("line",{key:"l1",x1:6,y1:8,x2:6.01,y2:8}),e("line",{key:"l2",x1:10,y1:8,x2:10.01,y2:8}),e("line",{key:"l3",x1:14,y1:8,x2:14.01,y2:8}),e("line",{key:"l4",x1:18,y1:8,x2:18.01,y2:8}),e("line",{key:"l5",x1:8,y1:16,x2:16,y2:16})])}
+function LogoutIc(p){return Svg(p,[e("path",{key:"p",d:"M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"}),e("polyline",{key:"pl",points:"16 17 21 12 16 7"}),e("line",{key:"l",x1:21,y1:12,x2:9,y2:12})])}
+function AttachIc(p){return Svg(p,e("path",{d:"M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"}))}
+function SmileIc(p){return Svg(p,[e("circle",{key:"c",cx:12,cy:12,r:10}),e("path",{key:"p",d:"M8 14s1.5 2 4 2 4-2 4-2"}),e("line",{key:"l1",x1:9,y1:9,x2:9.01,y2:9}),e("line",{key:"l2",x1:15,y1:9,x2:15.01,y2:9})])}
+function ArchiveIc(p){return Svg(p,[e("polyline",{key:"pl",points:"21 8 21 21 3 21 3 8"}),e("rect",{key:"r",x:1,y:3,width:22,height:5}),e("line",{key:"l",x1:10,y1:12,x2:14,y2:12})])}
+function EditIc(p){return Svg(p,[e("path",{key:"p1",d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"}),e("path",{key:"p2",d:"M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"})])}
+function MailIc(p){return Svg(p,[e("path",{key:"p",d:"M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"}),e("polyline",{key:"pl",points:"22 6 12 13 2 6"})])}
+function CheckCircleIc(p){return Svg(p,[e("path",{key:"p",d:"M22 11.08V12a10 10 0 11-5.93-9.14"}),e("polyline",{key:"pl",points:"22 4 12 14.01 9 11.01"})])}
+function AlertIc(p){return Svg(p,[e("circle",{key:"c",cx:12,cy:12,r:10}),e("line",{key:"l1",x1:12,y1:8,x2:12,y2:12}),e("line",{key:"l2",x1:12,y1:16,x2:12.01,y2:16})])}
+function EyeIc(p){return Svg(p,[e("path",{key:"p",d:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"}),e("circle",{key:"c",cx:12,cy:12,r:3})])}
+function EyeOffIc(p){return Svg(p,[e("path",{key:"p1",d:"M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 01-4.24-4.24"}),e("line",{key:"l",x1:1,y1:1,x2:23,y2:23})])}
+
+// ── Avatar ──────────────────────────────────────────────────────────────────
+function Avatar(props){
+  var s=props.size||40;
+  var cols=["#00a884","#8b5cf6","#ec4899","#f59e0b","#06b6d4","#ef4444","#6366f1"];
+  var bg=props.color||cols[props.name.charCodeAt(0)%cols.length];
+  var ini=props.name.split(" ").map(function(w){return w[0]}).join("").slice(0,2).toUpperCase();
+  var outer=e("div",{style:{position:"relative",width:s,height:s,flexShrink:0}},
+    e("div",{style:{width:s,height:s,borderRadius:"50%",background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:s*0.36,fontWeight:600,color:"#fff"}},ini),
+    props.online!==undefined?e("div",{style:{position:"absolute",bottom:0,right:0,width:s*0.28,height:s*0.28,borderRadius:"50%",background:props.online?C.green:C.txt3,border:"2px solid "+C.panel}}):null
+  );
+  return outer;
+}
+
+// ── Validation helpers ──────────────────────────────────────────────────────
+function validEmail(em){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)}
+function validPhone(ph){return /^\+?\d{7,15}$/.test(ph.replace(/\s/g,""))}
+function validPw(pw){return pw.length>=8}
+
+// ── Input component ─────────────────────────────────────────────────────────
+function Input(props){
+  var st={background:C.bg,border:"1px solid "+(props.error?C.red:C.border),borderRadius:8,padding:"12px 16px",color:C.txt,fontSize:15,outline:"none",width:"100%",boxSizing:"border-box",transition:"border-color 0.2s"};
+  if(props.center) st.textAlign="center";
+  if(props.spacing) st.letterSpacing=props.spacing;
+  if(props.big){st.fontSize=24;st.fontWeight=600}
+  return e("div",{style:{width:"100%"}},
+    props.label?e("div",{style:{fontSize:12,color:C.txt3,marginBottom:6,fontWeight:500}},props.label):null,
+    e("div",{style:{position:"relative"}},
+      e("input",{style:st,type:props.type||"text",placeholder:props.placeholder||"",value:props.value,onChange:function(ev){props.onChange(ev.target.value)},onKeyDown:props.onKey,maxLength:props.max}),
+      props.rightIcon?e("button",{onClick:props.onRightClick,style:{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",display:"flex",padding:4}},props.rightIcon):null
+    ),
+    props.error?e("div",{style:{fontSize:12,color:C.red,marginTop:4}},props.error):null
+  );
+}
+
+// ── Button component ────────────────────────────────────────────────────────
+function Btn(props){
+  var dis=props.disabled;
+  return e("button",{onClick:dis?null:props.onClick,style:{padding:"10px 32px",borderRadius:24,background:dis?C.hover:C.green,border:"none",color:dis?C.txt3:"#fff",fontSize:14,fontWeight:500,cursor:dis?"default":"pointer",marginTop:props.mt||0,width:props.full?"100%":"auto",transition:"all 0.2s",opacity:dis?0.6:1}},props.children);
+}
+
+// ── Data ────────────────────────────────────────────────────────────────────
+var chatList=[
+  {id:1,name:"Sarah Müller",online:true,unread:3,pinned:true,last:"Können wir den Call auf 15 Uhr verschieben?",time:"14:32",msgs:[{id:1,from:"them",text:"Hey! Hast du den Report fertig?",time:"13:10"},{id:2,from:"me",text:"Fast – schicke ihn in 10 Minuten.",time:"13:12"},{id:3,from:"them",text:"Super, danke! 👍",time:"13:13"},{id:4,from:"them",text:"Können wir den Call auf 15 Uhr verschieben?",time:"14:32"}]},
+  {id:2,name:"Team Backend",group:true,unread:12,pinned:true,last:"Jonas: PR ist ready for review",time:"14:28",members:5,msgs:[{id:1,from:"Jonas",text:"PR ist ready for review",time:"14:25"},{id:2,from:"Mira",text:"Schaue ich mir gleich an 👀",time:"14:28"}]},
+  {id:3,name:"Max Weber",online:true,unread:0,last:"Build ist durch ✅",time:"14:15",msgs:[{id:1,from:"them",text:"Deployment läuft.",time:"13:50"},{id:2,from:"them",text:"Build ist durch ✅",time:"14:15"}]},
+  {id:4,name:"Lisa Chen",online:false,unread:1,last:"Hier sind die neuen Wireframes",time:"13:45",msgs:[{id:1,from:"them",text:"Hier sind die neuen Wireframes",time:"13:45"}]},
+  {id:5,name:"Tom Richter",online:true,unread:0,last:"Server Monitoring sieht gut aus",time:"12:30",msgs:[{id:1,from:"me",text:"Wie sieht das Monitoring aus?",time:"12:20"},{id:2,from:"them",text:"Server Monitoring sieht gut aus",time:"12:30"}]},
+  {id:6,name:"Anna Schmidt",online:false,unread:0,last:"Sprint Review morgen um 10",time:"11:20",msgs:[{id:1,from:"them",text:"Sprint Review morgen um 10",time:"11:20"}]},
+  {id:7,name:"Mira Kovac",online:true,unread:0,last:"Danke für das Feedback!",time:"Gestern",msgs:[{id:1,from:"them",text:"Danke für das Feedback!",time:"Gestern"}]}
+];
+var callListData=[
+  {id:1,name:"Sarah Müller",dir:"in",video:true,time:"Heute, 14:00",missed:false},
+  {id:2,name:"Max Weber",dir:"out",video:false,time:"Heute, 11:30",missed:false},
+  {id:3,name:"Lisa Chen",dir:"in",video:false,time:"Gestern, 16:45",missed:true},
+  {id:4,name:"Team Backend",dir:"out",video:true,time:"Gestern, 10:00",missed:false},
+  {id:5,name:"Tom Richter",dir:"in",video:false,time:"01.04.2026",missed:false}
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REGISTER SCREEN – 5 Steps with Email Confirmation
+// ═══════════════════════════════════════════════════════════════════════════
+function ScreenRegister(props){
+  var s=useState(1),step=s[0],setStep=s[1];
+  var s1=useState(""),name=s1[0],setName=s1[1];
+  var s2=useState(""),phone=s2[0],setPhone=s2[1];
+  var s3=useState(""),email=s3[0],setEmail=s3[1];
+  var s4=useState(""),pw=s4[0],setPw=s4[1];
+  var s5=useState(""),pw2=s5[0],setPw2=s5[1];
+  var s6=useState(""),code=s6[0],setCode=s6[1];
+  var s7=useState({}),errs=s7[0],setErrs=s7[1];
+  var s8=useState(false),showPw=s8[0],setShowPw=s8[1];
+  var s9=useState(false),emailSent=s9[0],setEmailSent=s9[1];
+  var s10=useState(60),timer=s10[0],setTimer=s10[1];
+
+  useEffect(function(){
+    if(step===4&&emailSent&&timer>0){
+      var t=setTimeout(function(){setTimer(timer-1)},1000);
+      return function(){clearTimeout(t)};
+    }
+  },[step,emailSent,timer]);
+
+  function wrap(content){
+    return e("div",{style:{width:"100vw",height:"100vh",background:C.bg,display:"flex",flexDirection:"column"}},
+      e("div",{style:{background:C.greenDk,height:220}}),
+      e("div",{style:{flex:1,display:"flex",justifyContent:"center",marginTop:-120}},
+        e("div",{className:"fade-in",style:{background:C.panel,borderRadius:4,padding:"48px 56px",maxWidth:460,width:"100%",boxShadow:"0 18px 50px rgba(0,0,0,0.4)",textAlign:"center"}},
+          e("div",{style:{textAlign:"left",marginBottom:12}},
+            e("button",{onClick:function(){if(step>1)setStep(step-1);else props.goBack()},style:{background:"none",border:"none",cursor:"pointer",display:"flex",padding:4}},BackIc({color:C.txt2,size:20}))
+          ),
+          content,
+          e("div",{style:{display:"flex",justifyContent:"center",gap:8,marginTop:24}},
+            [1,2,3,4,5].map(function(n){return e("div",{key:n,style:{width:n===step?24:8,height:8,borderRadius:4,background:n<=step?C.green:C.hover,transition:"all 0.3s"}})})
+          )
+        )
+      )
+    );
+  }
+
+  // Step 1: Name
+  if(step===1) return wrap(e("div",null,
+    e("div",{style:{width:72,height:72,borderRadius:"50%",background:C.hover,margin:"0 auto 16px",display:"flex",alignItems:"center",justifyContent:"center"}},UserIc({color:C.txt2,size:32})),
+    e("h2",{style:{fontSize:22,fontWeight:300,color:C.txt,margin:"0 0 6px"}},"Profil erstellen"),
+    e("p",{style:{color:C.txt3,fontSize:14,margin:"0 0 24px"}},"Gib deinen Namen ein"),
+    e("div",{style:{maxWidth:280,margin:"0 auto"}},
+      Input({value:name,onChange:setName,placeholder:"Vor- und Nachname",error:errs.name}),
+      e(Btn,{onClick:function(){if(!name.trim()){setErrs({name:"Bitte gib deinen Namen ein"});return}setErrs({});setStep(2)},disabled:!name.trim(),mt:16,full:true},"Weiter")
+    )
+  ));
+
+  // Step 2: Phone
+  if(step===2) return wrap(e("div",null,
+    PhoneIc({color:C.green,size:44}),
+    e("h2",{style:{fontSize:22,fontWeight:300,color:C.txt,margin:"14px 0 6px"}},"Telefonnummer"),
+    e("p",{style:{color:C.txt3,fontSize:14,margin:"0 0 24px"}},"Gib deine Nummer ein"),
+    e("div",{style:{maxWidth:280,margin:"0 auto"}},
+      e("div",{style:{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:8,padding:"12px 16px",border:"1px solid "+C.border,marginBottom:12}},
+        e("span",{style:{fontSize:18}},"🇩🇪"),
+        e("span",{style:{color:C.txt,fontSize:14,flex:1,textAlign:"left"}},"Deutschland (+49)")
+      ),
+      Input({value:phone,onChange:setPhone,placeholder:"+49 123 456 7890",center:true,spacing:"1px",error:errs.phone}),
+      e(Btn,{onClick:function(){if(!validPhone(phone)){setErrs({phone:"Ungültige Telefonnummer (mind. 7 Ziffern)"});return}setErrs({});setStep(3)},disabled:!phone.trim(),mt:16,full:true},"Weiter")
+    )
+  ));
+
+  // Step 3: Email
+  if(step===3) return wrap(e("div",null,
+    MailIc({color:C.green,size:44}),
+    e("h2",{style:{fontSize:22,fontWeight:300,color:C.txt,margin:"14px 0 6px"}},"E-Mail-Adresse"),
+    e("p",{style:{color:C.txt3,fontSize:14,margin:"0 0 24px"}},"Für die Kontowiederherstellung und Bestätigung"),
+    e("div",{style:{maxWidth:280,margin:"0 auto"}},
+      Input({value:email,onChange:setEmail,placeholder:"name@beispiel.de",type:"email",error:errs.email}),
+      e(Btn,{onClick:function(){
+        if(!validEmail(email)){setErrs({email:"Bitte gib eine gültige E-Mail-Adresse ein"});return}
+        setErrs({});setEmailSent(true);setTimer(60);setStep(4);
+      },disabled:!email.trim(),mt:16,full:true},"Bestätigungscode senden")
+    )
+  ));
+
+  // Step 4: Email Confirmation Code
+  if(step===4) return wrap(e("div",null,
+    e("div",{style:{width:72,height:72,borderRadius:"50%",background:C.green+"22",margin:"0 auto 16px",display:"flex",alignItems:"center",justifyContent:"center"}},
+      CheckCircleIc({color:C.green,size:36})
+    ),
+    e("h2",{style:{fontSize:22,fontWeight:300,color:C.txt,margin:"0 0 6px"}},"E-Mail bestätigen"),
+    e("p",{style:{color:C.txt3,fontSize:14,margin:"0 0 8px"}},"Code wurde gesendet an:"),
+    e("p",{style:{color:C.green,fontSize:15,fontWeight:500,margin:"0 0 24px"}},email),
+    e("div",{style:{maxWidth:280,margin:"0 auto"}},
+      Input({value:code,onChange:setCode,placeholder:"6-stelliger Code",center:true,spacing:"6px",big:true,max:6,error:errs.code}),
+      e(Btn,{onClick:function(){
+        if(code.length!==6){setErrs({code:"Bitte gib den 6-stelligen Code ein"});return}
+        setErrs({});setStep(5);
+      },disabled:code.length<6,mt:16,full:true},"Bestätigen"),
+      e("div",{style:{marginTop:16,textAlign:"center"}},
+        timer>0?e("span",{style:{color:C.txt3,fontSize:13}},"Neuer Code in ",e("span",{style:{color:C.green}},timer+"s")):
+        e("button",{onClick:function(){setTimer(60)},style:{background:"none",border:"none",color:C.green,fontSize:13,cursor:"pointer",fontWeight:500}},"Code erneut senden")
+      )
+    )
+  ));
+
+  // Step 5: Password
+  return wrap(e("div",null,
+    KeyIc({color:C.green,size:44}),
+    e("h2",{style:{fontSize:22,fontWeight:300,color:C.txt,margin:"14px 0 6px"}},"Passwort erstellen"),
+    e("p",{style:{color:C.txt3,fontSize:14,margin:"0 0 24px"}},"Mindestens 8 Zeichen"),
+    e("div",{style:{maxWidth:280,margin:"0 auto",display:"flex",flexDirection:"column",gap:12}},
+      Input({value:pw,onChange:setPw,placeholder:"Passwort",type:showPw?"text":"password",error:errs.pw,
+        rightIcon:showPw?EyeOffIc({color:C.txt3,size:18}):EyeIc({color:C.txt3,size:18}),
+        onRightClick:function(){setShowPw(!showPw)}}),
+      Input({value:pw2,onChange:setPw2,placeholder:"Passwort bestätigen",type:showPw?"text":"password",error:errs.pw2}),
+      // Password strength
+      pw.length>0?e("div",{style:{display:"flex",gap:4,marginTop:4}},
+        [1,2,3,4].map(function(n){
+          var strength=pw.length>=12?4:pw.length>=10?3:pw.length>=8?2:1;
+          var clr=n<=strength?(strength>=3?C.green:strength===2?C.yellow:C.red):C.hover;
+          return e("div",{key:n,style:{flex:1,height:3,borderRadius:2,background:clr,transition:"all 0.3s"}});
+        }),
+        e("span",{style:{fontSize:11,color:C.txt3,marginLeft:8}},pw.length>=12?"Stark":pw.length>=8?"OK":"Schwach")
+      ):null,
+      e(Btn,{onClick:function(){
+        var newErrs={};
+        if(!validPw(pw)) newErrs.pw="Mindestens 8 Zeichen";
+        if(pw!==pw2) newErrs.pw2="Passwörter stimmen nicht überein";
+        if(Object.keys(newErrs).length){setErrs(newErrs);return}
+        // Save user and go to login
+        props.onRegister({name:name,phone:phone,email:email,pw:pw});
+      },disabled:!pw||!pw2,mt:8,full:true},"Registrierung abschließen")
+    )
+  ));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LOGIN SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+function ScreenLogin(props){
+  var s1=useState(""),loginId=s1[0],setLoginId=s1[1];
+  var s2=useState(""),pw=s2[0],setPw=s2[1];
+  var s3=useState({}),errs=s3[0],setErrs=s3[1];
+  var s4=useState(false),showPw=s4[0],setShowPw=s4[1];
+  var s5=useState(false),shaking=s5[0],setShaking=s5[1];
+
+  function tryLogin(){
+    var newErrs={};
+    if(!loginId.trim()) newErrs.id="E-Mail oder Telefonnummer eingeben";
+    if(!pw.trim()) newErrs.pw="Passwort eingeben";
+    if(Object.keys(newErrs).length){setErrs(newErrs);return}
+
+    var user=props.users.find(function(u){return u.email===loginId||u.phone===loginId});
+    if(!user){setErrs({id:"Konto nicht gefunden"});setShaking(true);setTimeout(function(){setShaking(false)},400);return}
+    if(user.pw!==pw){setErrs({pw:"Falsches Passwort"});setShaking(true);setTimeout(function(){setShaking(false)},400);return}
+    props.onLogin(user);
+  }
+
+  return e("div",{style:{width:"100vw",height:"100vh",background:C.bg,display:"flex",flexDirection:"column"}},
+    e("div",{style:{background:C.greenDk,height:220}}),
+    e("div",{style:{flex:1,display:"flex",justifyContent:"center",marginTop:-120}},
+      e("div",{className:"fade-in"+(shaking?" shake":""),style:{background:C.panel,borderRadius:4,padding:"48px 56px",maxWidth:460,width:"100%",boxShadow:"0 18px 50px rgba(0,0,0,0.4)",textAlign:"center"}},
+        // Logo
+        e("div",{style:{width:64,height:64,borderRadius:16,background:"linear-gradient(135deg,"+C.green+",#008069)",margin:"0 auto 16px",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 32px rgba(0,168,132,0.3)"}},
+          e("span",{style:{fontSize:28,fontWeight:800,color:"#fff"}},"A")
+        ),
+        e("h1",{style:{fontSize:26,fontWeight:700,color:C.txt,margin:"0 0 4px"}},"Awi"),
+        e("p",{style:{color:C.txt3,fontSize:14,margin:"0 0 32px"}},"Melde dich bei deinem Konto an"),
+
+        e("div",{style:{maxWidth:300,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}},
+          Input({value:loginId,onChange:function(v){setLoginId(v);setErrs({})},placeholder:"E-Mail oder Telefonnummer",error:errs.id,
+            onKey:function(ev){if(ev.key==="Enter")tryLogin()}}),
+          Input({value:pw,onChange:function(v){setPw(v);setErrs({})},placeholder:"Passwort",type:showPw?"text":"password",error:errs.pw,
+            rightIcon:showPw?EyeOffIc({color:C.txt3,size:18}):EyeIc({color:C.txt3,size:18}),
+            onRightClick:function(){setShowPw(!showPw)},
+            onKey:function(ev){if(ev.key==="Enter")tryLogin()}}),
+          e("div",{style:{textAlign:"right"}},
+            e("button",{style:{background:"none",border:"none",color:C.green,fontSize:13,cursor:"pointer"}},"Passwort vergessen?")
+          ),
+          e(Btn,{onClick:tryLogin,full:true,mt:4},"Anmelden")
+        ),
+
+        // Divider
+        e("div",{style:{display:"flex",alignItems:"center",gap:12,margin:"24px 0"}},
+          e("div",{style:{flex:1,height:1,background:C.border}}),
+          e("span",{style:{fontSize:12,color:C.txt3}},"oder"),
+          e("div",{style:{flex:1,height:1,background:C.border}})
+        ),
+
+        e("div",{style:{textAlign:"center"}},
+          e("span",{style:{color:C.txt3,fontSize:13}},"Noch kein Konto? "),
+          e("button",{onClick:props.goRegister,style:{background:"none",border:"none",color:C.green,fontSize:13,cursor:"pointer",fontWeight:600}},"Jetzt registrieren")
+        )
+      )
+    )
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REGISTRATION SUCCESS SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+function ScreenRegSuccess(props){
+  return e("div",{style:{width:"100vw",height:"100vh",background:C.bg,display:"flex",flexDirection:"column"}},
+    e("div",{style:{background:C.greenDk,height:220}}),
+    e("div",{style:{flex:1,display:"flex",justifyContent:"center",marginTop:-120}},
+      e("div",{className:"fade-in",style:{background:C.panel,borderRadius:4,padding:"48px 56px",maxWidth:460,width:"100%",boxShadow:"0 18px 50px rgba(0,0,0,0.4)",textAlign:"center"}},
+        e("div",{style:{width:80,height:80,borderRadius:"50%",background:C.green+"22",margin:"0 auto 20px",display:"flex",alignItems:"center",justifyContent:"center"}},
+          CheckCircleIc({color:C.green,size:44})
+        ),
+        e("h2",{style:{fontSize:24,fontWeight:400,color:C.txt,margin:"0 0 12px"}},"Registrierung erfolgreich!"),
+        e("p",{style:{color:C.txt2,fontSize:15,margin:"0 0 8px"}},"Willkommen bei Awi, ",e("strong",null,props.user.name),"!"),
+        e("p",{style:{color:C.txt3,fontSize:14,margin:"0 0 32px"}},"Du kannst dich jetzt mit deiner E-Mail oder Telefonnummer anmelden."),
+        e("div",{style:{background:C.bg,borderRadius:10,padding:16,marginBottom:24,textAlign:"left"}},
+          e("div",{style:{fontSize:12,color:C.txt3,marginBottom:8}},"Deine Zugangsdaten:"),
+          e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},e("span",{style:{color:C.txt3}},"E-Mail:"),e("span",{style:{color:C.txt}},props.user.email)),
+          e("div",{style:{display:"flex",justifyContent:"space-between"}},e("span",{style:{color:C.txt3}},"Telefon:"),e("span",{style:{color:C.txt}},props.user.phone))
+        ),
+        e(Btn,{onClick:props.goLogin,full:true},"Zum Login")
+      )
+    )
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════════════════
+function SettingsPanel(props){
+  var s=useState(null),sub=s[0],setSub=s[1];
+  var items=[
+    {Ic:MonitorIc,l:"Allgemein",d:"Starten und schließen"},
+    {Ic:UserIc,l:"Profil",d:"Name, Profilbild, Benutzername"},
+    {Ic:KeyIc,l:"Konto",d:"Sicherheitsbenachrichtigungen, Kontoinformationen"},
+    {Ic:LockIc,l:"Datenschutz",d:"Blockierte Kontakte, selbstlöschende Nachrichten"},
+    {Ic:ChatIc,l:"Chats",d:"Design, Hintergrund, Chat-Einstellungen"},
+    {Ic:VideoIc,l:"Video und Sprache",d:"Kamera, Mikrofon und Lautsprecher"},
+    {Ic:BellIc,l:"Benachrichtigungen",d:"Benachrichtigungen zu Nachrichten"},
+    {Ic:KeyboardIc,l:"Tastaturkürzel",d:"Schnellmaßnahmen"},
+    {Ic:HelpIc,l:"Hilfe und Feedback",d:"Hilfebereich, Kontakt, Datenschutzrichtlinie"}
+  ];
+
+  function header(title,back){
+    return e("div",{style:{padding:"14px 16px",display:"flex",alignItems:"center",gap:14,borderBottom:"1px solid "+C.border}},
+      e("button",{onClick:back,style:{background:"none",border:"none",cursor:"pointer",display:"flex",padding:4}},BackIc({color:C.txt2,size:20})),
+      e("span",{style:{fontSize:16,fontWeight:500,color:C.txt}},title)
+    );
+  }
+
+  if(sub) return e("div",{style:{height:"100%",display:"flex",flexDirection:"column"}},
+    header(sub,function(){setSub(null)}),
+    e("div",{style:{flex:1,padding:20,overflowY:"auto"}},
+      sub==="Profil"?e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:16}},
+        Avatar({name:props.user.name,size:80,color:C.green}),
+        e("div",{style:{fontSize:18,fontWeight:600,color:C.txt}},props.user.name),
+        e("div",{style:{width:"100%",marginTop:8}},
+          [[" Name",props.user.name],["E-Mail",props.user.email],["Telefon",props.user.phone]].map(function(x){return e("div",{key:x[0],style:{background:C.bg,borderRadius:8,padding:14,marginBottom:10}},e("div",{style:{fontSize:12,color:C.green,fontWeight:500,marginBottom:4}},x[0]),e("div",{style:{color:C.txt,fontSize:15}},x[1]))})
+        )
+      ):sub==="Datenschutz"?e("div",null,
+        ["Zuletzt online & Online","Profilbild","Info","Gruppen","Lesebestätigungen"].map(function(x){return e("div",{key:x,style:{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid "+C.border}},e("span",{style:{color:C.txt,fontSize:14}},x),e("span",{style:{color:C.txt3,fontSize:13}},"Alle"))})
+      ):e("p",{style:{color:C.txt3,fontSize:14}},"Einstellungen f\u00FCr \u201E"+sub+"\u201C")
+    )
+  );
+
+  return e("div",{style:{height:"100%",display:"flex",flexDirection:"column"}},
+    header("Einstellungen",props.onClose),
+    e("div",{onClick:function(){setSub("Profil")},style:{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",cursor:"pointer",borderBottom:"1px solid "+C.border}},
+      Avatar({name:props.user.name,size:50,color:C.green}),
+      e("div",null,e("div",{style:{fontWeight:500,fontSize:16,color:C.txt}},props.user.name),e("div",{style:{fontSize:13,color:C.txt3,marginTop:2}},"Hey, ich benutze Awi!"))
+    ),
+    e("div",{style:{flex:1,overflowY:"auto"}},
+      items.map(function(it,i){return e("div",{key:i,onClick:function(){setSub(it.l)},style:{display:"flex",alignItems:"center",gap:18,padding:"13px 22px",cursor:"pointer"},onMouseEnter:function(ev){ev.currentTarget.style.background=C.hover},onMouseLeave:function(ev){ev.currentTarget.style.background="transparent"}},
+        it.Ic({color:C.txt2,size:20}),e("div",null,e("div",{style:{fontSize:15,color:C.txt}},it.l),e("div",{style:{fontSize:13,color:C.txt3,marginTop:1}},it.d))
+      )}),
+      e("div",{onClick:props.onLogout,style:{display:"flex",alignItems:"center",gap:18,padding:"13px 22px",cursor:"pointer"},onMouseEnter:function(ev){ev.currentTarget.style.background=C.hover},onMouseLeave:function(ev){ev.currentTarget.style.background="transparent"}},
+        LogoutIc({color:C.red,size:20}),e("span",{style:{fontSize:15,color:C.red}},"Abmelden"))
+    )
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONVERSATION
+// ═══════════════════════════════════════════════════════════════════════════
+function Convo(props){
+  var s1=useState(props.chat.msgs.slice()),msgs=s1[0],setMsgs=s1[1];
+  var s2=useState(""),input=s2[0],setInput=s2[1];
+  var btm=useRef(null);
+  useEffect(function(){if(btm.current)btm.current.scrollIntoView({behavior:"smooth"})},[msgs]);
+  function send(){
+    if(!input.trim())return;
+    var now=new Date();var t=(now.getHours()<10?"0":"")+now.getHours()+":"+(now.getMinutes()<10?"0":"")+now.getMinutes();
+    setMsgs(msgs.concat([{id:Date.now(),from:"me",text:input.trim(),time:t}]));setInput("");
+  }
+  var ch=props.chat;
+  return e("div",{style:{flex:1,display:"flex",flexDirection:"column",background:C.deeper}},
+    // Header
+    e("div",{style:{padding:"10px 16px",background:C.panel,display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid "+C.border,borderLeft:"1px solid "+C.border}},
+      e("button",{onClick:props.onBack,style:{background:"none",border:"none",cursor:"pointer",display:"flex",padding:4}},BackIc({color:C.txt2,size:20})),
+      Avatar({name:ch.name,size:38,online:ch.online}),
+      e("div",{style:{flex:1}},e("div",{style:{fontWeight:500,fontSize:15,color:C.txt}},ch.name),e("div",{style:{fontSize:12,color:ch.online?C.green:C.txt3}},ch.group?(ch.members||0)+" Teilnehmer":ch.online?"Online":"zuletzt online")),
+      e("button",{onClick:props.onVideoCall,style:{background:"none",border:"none",cursor:"pointer",padding:8,display:"flex"}},VideoIc({color:C.txt2,size:20})),
+      e("button",{onClick:props.onCall,style:{background:"none",border:"none",cursor:"pointer",padding:8,display:"flex"}},PhoneIc({color:C.txt2,size:20})),
+      e("button",{style:{background:"none",border:"none",cursor:"pointer",padding:8,display:"flex"}},SearchIc({color:C.txt2,size:20}))
+    ),
+    // Messages
+    e("div",{style:{flex:1,overflowY:"auto",padding:"14px 60px"}},
+      e("div",{style:{textAlign:"center",marginBottom:14}},e("span",{style:{background:C.panel,color:C.txt3,padding:"4px 12px",borderRadius:8,fontSize:12}},"Heute")),
+      e("div",{style:{textAlign:"center",marginBottom:16}},e("span",{style:{background:"#182229",color:C.txt3,padding:"5px 12px",borderRadius:8,fontSize:12,display:"inline-flex",alignItems:"center",gap:5}},LockIc({color:C.txt3,size:11})," Nachrichten sind Ende-zu-Ende-verschlüsselt")),
+      msgs.map(function(m){var isMe=m.from==="me";return e("div",{key:m.id,style:{display:"flex",justifyContent:isMe?"flex-end":"flex-start",marginBottom:3}},
+        e("div",{style:{maxWidth:"65%",padding:"6px 8px 4px",borderRadius:8,borderTopLeftRadius:isMe?8:0,borderTopRightRadius:isMe?0:8,background:isMe?C.bubbleMe:C.bubbleThem}},
+          ch.group&&!isMe?e("div",{style:{fontSize:12,fontWeight:600,color:C.green,marginBottom:2}},m.from):null,
+          e("span",{style:{fontSize:14,lineHeight:"1.45",color:C.txt}},m.text),
+          e("span",{style:{float:"right",fontSize:11,color:"rgba(255,255,255,0.45)",marginLeft:12,marginTop:4,display:"inline-flex",alignItems:"center",gap:3}},m.time,isMe?CheckIc({size:14,color:C.blue}):null)
+        )
+      )}),
+      e("div",{ref:btm})
+    ),
+    // Input
+    e("div",{style:{padding:"8px 16px",background:C.panel,display:"flex",alignItems:"center",gap:8,borderLeft:"1px solid "+C.border}},
+      e("button",{style:{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex"}},PlusIc({color:C.txt2,size:22})),
+      e("div",{style:{flex:1,display:"flex",alignItems:"center",background:C.input,borderRadius:8,padding:"6px 12px",gap:8}},
+        e("button",{style:{background:"none",border:"none",cursor:"pointer",display:"flex"}},SmileIc({color:C.txt2,size:22})),
+        e("input",{style:{flex:1,background:"transparent",border:"none",outline:"none",color:C.txt,fontSize:15,padding:"4px 0"},placeholder:"Nachricht eingeben",value:input,onChange:function(ev){setInput(ev.target.value)},onKeyDown:function(ev){if(ev.key==="Enter")send()}}),
+        e("button",{style:{background:"none",border:"none",cursor:"pointer",display:"flex"}},AttachIc({color:C.txt2,size:20}))
+      ),
+      input.trim()?e("button",{onClick:send,style:{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex"}},SendIc({color:C.txt2,size:22})):
+      e("button",{style:{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex"}},MicIc({color:C.txt2,size:22}))
+    )
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CALL SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+function CallScr(props){
+  var s1=useState(false),muted=s1[0],setMuted=s1[1];
+  var s2=useState(props.isVideo),vidOn=s2[0],setVidOn=s2[1];
+  var s3=useState(0),elapsed=s3[0],setElapsed=s3[1];
+  useEffect(function(){var t=setInterval(function(){setElapsed(function(s){return s+1})},1000);return function(){clearInterval(t)}},[]);
+  var mm=Math.floor(elapsed/60),ss=elapsed%60;
+  var ts=(mm<10?"0":"")+mm+":"+(ss<10?"0":"")+ss;
+
+  function CB(p2){return e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8}},
+    e("button",{onClick:p2.onClick,style:{width:52,height:52,borderRadius:"50%",background:p2.danger?C.red:p2.active?"rgba(255,255,255,0.15)":"rgba(255,255,255,0.08)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},p2.icon),
+    e("span",{style:{fontSize:11,color:C.txt3}},p2.label)
+  )}
+
+  return e("div",{style:{position:"fixed",inset:0,zIndex:200,background:C.deeper,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}},
+    props.isVideo&&vidOn?e("div",{style:{position:"absolute",top:16,right:16,width:120,height:170,borderRadius:12,background:C.panel,border:"2px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"center",zIndex:2}},Avatar({name:"Du",size:40,color:C.green})):null,
+    Avatar({name:props.contact.name,size:120}),
+    e("h2",{style:{fontSize:24,fontWeight:400,color:C.txt,marginTop:20,marginBottom:4}},props.contact.name),
+    e("p",{style:{color:C.green,fontSize:14,margin:0}},ts),
+    e("p",{style:{color:C.txt3,fontSize:13,marginTop:4,display:"flex",alignItems:"center",gap:4}},LockIc({color:C.txt3,size:12})," Ende-zu-Ende-verschlüsselt"),
+    e("div",{style:{position:"absolute",bottom:48,display:"flex",gap:20}},
+      CB({active:muted,onClick:function(){setMuted(!muted)},label:muted?"Stumm":"Mikrofon",icon:muted?MicOffIc({color:"#fff",size:22}):MicIc({color:"#fff",size:22})}),
+      props.isVideo?CB({active:!vidOn,onClick:function(){setVidOn(!vidOn)},label:"Kamera",icon:vidOn?VideoIc({color:"#fff",size:22}):VideoOffIc({color:"#fff",size:22})}):null,
+      CB({onClick:function(){},label:"Teilen",icon:MonitorIc({color:"#fff",size:22})}),
+      CB({danger:true,onClick:props.onEnd,label:"Beenden",icon:PhoneIc({color:"#fff",size:22})})
+    )
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════════════════════════════════════════
+function App(){
+  var s0=useState("login"),screen=s0[0],setScreen=s0[1];
+  var s1=useState("chats"),tab=s1[0],setTab=s1[1];
+  var s2=useState(null),openChat=s2[0],setOpenChat=s2[1];
+  var s3=useState(null),callInfo=s3[0],setCallInfo=s3[1];
+  var s4=useState(false),showSet=s4[0],setShowSet=s4[1];
+  var s5=useState(""),search=s5[0],setSearch=s5[1];
+  var s6=useState("alle"),filter=s6[0],setFilter=s6[1];
+  var s7=useState([]),users=s7[0],setUsers=s7[1];
+  var s8=useState(null),curUser=s8[0],setCurUser=s8[1];
+  var s9=useState(null),regUser=s9[0],setRegUser=s9[1];
+
+  // Auth screens
+  if(screen==="login") return e(ScreenLogin,{
+    users:users,
+    goRegister:function(){setScreen("register")},
+    onLogin:function(user){setCurUser(user);setScreen("app")}
+  });
+  if(screen==="register") return e(ScreenRegister,{
+    goBack:function(){setScreen("login")},
+    onRegister:function(user){setUsers(users.concat([user]));setRegUser(user);setScreen("regSuccess")}
+  });
+  if(screen==="regSuccess") return e(ScreenRegSuccess,{
+    user:regUser,
+    goLogin:function(){setScreen("login")}
+  });
+  if(callInfo) return e(CallScr,{contact:callInfo.contact,isVideo:callInfo.isVideo,onEnd:function(){setCallInfo(null)}});
+
+  // Filter
+  var fChats=chatList.filter(function(c2){
+    if(search&&c2.name.toLowerCase().indexOf(search.toLowerCase())===-1)return false;
+    if(filter==="ungelesen"&&!c2.unread)return false;
+    if(filter==="gruppen"&&!c2.group)return false;
+    return true;
+  });
+  var totalU=0;chatList.forEach(function(c2){totalU+=c2.unread||0});
+
+  function SB(p){
+    var active=!showSet&&tab===p.t;
+    return e("div",{style:{position:"relative"}},
+      e("button",{onClick:p.onClick||function(){setTab(p.t);setShowSet(false);setOpenChat(null)},style:{width:44,height:44,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",background:"transparent",border:"none"},
+        onMouseEnter:function(ev){ev.currentTarget.style.background=C.hover},onMouseLeave:function(ev){ev.currentTarget.style.background="transparent"}},
+        p.Ic({color:active?C.green:C.txt2,size:22})
+      ),
+      p.badge>0?e("div",{style:{position:"absolute",top:2,right:2,background:C.green,color:"#fff",fontSize:10,fontWeight:700,borderRadius:10,minWidth:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}},p.badge):null
+    );
+  }
+
+  return e("div",{style:{width:"100vw",height:"100vh",background:C.bg,color:C.txt,fontFamily:"'Segoe UI','Helvetica Neue',Arial,sans-serif",display:"flex",overflow:"hidden",fontSize:14}},
+    // Sidebar
+    e("div",{style:{width:56,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",alignItems:"center",paddingTop:12,gap:2,flexShrink:0}},
+      e(SB,{Ic:ChatIc,t:"chats",badge:totalU}),
+      e(SB,{Ic:PhoneIc,t:"calls",badge:0}),
+      e(SB,{Ic:StatusIc,t:"status",badge:0}),
+      e(SB,{Ic:ChannelIc,t:"channels",badge:0}),
+      e(SB,{Ic:UsersIc,t:"communities",badge:0}),
+      e("div",{style:{flex:1}}),
+      e(SB,{Ic:SettingsIc,t:"settings",badge:0,onClick:function(){setShowSet(true);setOpenChat(null)}}),
+      e("div",{style:{marginBottom:12,cursor:"pointer"}},Avatar({name:curUser?curUser.name:"Awi",size:32,color:C.green}))
+    ),
+
+    // Panel
+    e("div",{style:{width:340,background:C.panel,borderRight:"1px solid "+C.border,display:"flex",flexDirection:"column",flexShrink:0,overflow:"hidden"}},
+      showSet?e(SettingsPanel,{user:curUser||{name:"Awi",email:"",phone:""},onClose:function(){setShowSet(false)},onLogout:function(){setScreen("login");setShowSet(false);setCurUser(null)}}):
+      e("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
+        e("div",{style:{padding:"14px 16px 10px"}},
+          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}},
+            e("h2",{style:{fontSize:22,fontWeight:700,margin:0,color:C.txt}},tab==="chats"?"Chats":tab==="calls"?"Anrufe":tab==="status"?"Status":tab==="channels"?"Kanäle":"Communities"),
+            e("div",{style:{display:"flex",gap:4}},
+              e("button",{style:{background:"none",border:"none",cursor:"pointer",padding:6,borderRadius:8,display:"flex"}},EditIc({color:C.txt2,size:20}))
+            )
+          ),
+          e("div",{style:{display:"flex",alignItems:"center",background:C.input,borderRadius:8,padding:"6px 12px",gap:10}},
+            SearchIc({color:C.txt3,size:16}),
+            e("input",{style:{flex:1,background:"transparent",border:"none",outline:"none",color:C.txt,fontSize:13,padding:"2px 0"},placeholder:"Suchen...",value:search,onChange:function(ev){setSearch(ev.target.value)}})
+          ),
+          tab==="chats"?e("div",{style:{display:"flex",gap:8,marginTop:10}},
+            [{k:"alle",l:"Alle"},{k:"ungelesen",l:"Ungelesen"},{k:"gruppen",l:"Gruppen"}].map(function(f){return e("button",{key:f.k,onClick:function(){setFilter(f.k)},style:{padding:"5px 14px",borderRadius:16,fontSize:13,fontWeight:500,cursor:"pointer",border:"none",background:filter===f.k?C.green+"22":"transparent",color:filter===f.k?C.green:C.txt3}},f.l)})
+          ):null
+        ),
+        e("div",{style:{flex:1,overflowY:"auto"}},
+          // CHATS
+          tab==="chats"?[
+            e("div",{key:"arch",style:{display:"flex",alignItems:"center",gap:16,padding:"10px 20px",cursor:"pointer",borderBottom:"1px solid "+C.border},onMouseEnter:function(ev){ev.currentTarget.style.background=C.hover},onMouseLeave:function(ev){ev.currentTarget.style.background="transparent"}},
+              ArchiveIc({color:C.green,size:18}),e("span",{style:{fontSize:14,color:C.green,fontWeight:500}},"Archiviert"))
+          ].concat(fChats.map(function(c2){var sel=openChat&&openChat.id===c2.id;return e("div",{key:c2.id,onClick:function(){setOpenChat(c2)},style:{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",cursor:"pointer",background:sel?C.hover:"transparent"},onMouseEnter:function(ev){if(!sel)ev.currentTarget.style.background=C.hover},onMouseLeave:function(ev){if(!sel)ev.currentTarget.style.background="transparent"}},
+            Avatar({name:c2.name,size:48,online:c2.online}),
+            e("div",{style:{flex:1,minWidth:0,borderBottom:"1px solid "+C.border,paddingBottom:10}},
+              e("div",{style:{display:"flex",justifyContent:"space-between"}},e("span",{style:{fontWeight:c2.unread?600:400,fontSize:15,color:C.txt}},c2.name),e("span",{style:{fontSize:12,color:c2.unread?C.green:C.txt3,flexShrink:0}},c2.time)),
+              e("div",{style:{display:"flex",justifyContent:"space-between",marginTop:2}},
+                e("span",{style:{fontSize:13,color:C.txt3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,display:"flex",alignItems:"center",gap:4}},!c2.group&&!c2.unread?CheckIc({size:16,color:C.blue}):null,c2.last),
+                c2.unread>0?e("div",{style:{background:C.green,color:"#fff",fontSize:11,fontWeight:700,borderRadius:10,minWidth:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px",flexShrink:0,marginLeft:8}},c2.unread):null
+              )
+            )
+          )})):
+
+          // CALLS
+          tab==="calls"?[
+            e("div",{key:"new",style:{display:"flex",alignItems:"center",gap:14,padding:"12px 20px",cursor:"pointer",borderBottom:"1px solid "+C.border},onMouseEnter:function(ev){ev.currentTarget.style.background=C.hover},onMouseLeave:function(ev){ev.currentTarget.style.background="transparent"}},
+              e("div",{style:{width:42,height:42,borderRadius:"50%",background:C.green,display:"flex",alignItems:"center",justifyContent:"center"}},PhoneIc({color:"#fff",size:20})),
+              e("span",{style:{fontWeight:500,color:C.txt}},"Neuer Anruf"))
+          ].concat(callListData.map(function(c2){return e("div",{key:c2.id,onClick:function(){setCallInfo({contact:{name:c2.name},isVideo:c2.video})},style:{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",cursor:"pointer"},onMouseEnter:function(ev){ev.currentTarget.style.background=C.hover},onMouseLeave:function(ev){ev.currentTarget.style.background="transparent"}},
+            Avatar({name:c2.name,size:42}),
+            e("div",{style:{flex:1}},e("div",{style:{fontWeight:400,fontSize:15,color:c2.missed?C.red:C.txt}},c2.name),e("div",{style:{fontSize:13,color:C.txt3,display:"flex",alignItems:"center",gap:4,marginTop:2}},e("span",{style:{color:c2.missed?C.red:c2.dir==="in"?C.green:C.txt3}},c2.dir==="in"?"↙":"↗"),c2.time)),
+            c2.video?VideoIc({color:C.green,size:20}):PhoneIc({color:C.green,size:20})
+          )})):
+
+          // STATUS
+          tab==="status"?e("div",{style:{padding:20}},
+            e("div",{style:{display:"flex",alignItems:"center",gap:14,marginBottom:24}},
+              e("div",{style:{position:"relative"}},Avatar({name:curUser?curUser.name:"Awi",size:52,color:C.green}),e("div",{style:{position:"absolute",bottom:0,right:0,width:22,height:22,borderRadius:"50%",background:C.green,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid "+C.panel}},PlusIc({color:"#fff",size:14}))),
+              e("div",null,e("div",{style:{fontWeight:500,color:C.txt}},"Mein Status"),e("div",{style:{fontSize:13,color:C.txt3}},"Tippe, um ein Statusupdate zu erstellen"))
+            ),
+            e("div",{style:{fontSize:13,color:C.txt3,fontWeight:500,marginBottom:12,textTransform:"uppercase",letterSpacing:0.5}},"Neueste Updates"),
+            ["Sarah Müller","Max Weber","Lisa Chen"].map(function(n){return e("div",{key:n,style:{display:"flex",alignItems:"center",gap:14,padding:"8px 0",cursor:"pointer"}},
+              e("div",{style:{padding:2,borderRadius:"50%",border:"2px solid "+C.green}},Avatar({name:n,size:42})),
+              e("div",null,e("div",{style:{fontWeight:400,fontSize:14,color:C.txt}},n),e("div",{style:{fontSize:12,color:C.txt3}},"Heute"))
+            )})
+          ):
+
+          // CHANNELS
+          tab==="channels"?e("div",{style:{padding:20,textAlign:"center",paddingTop:60}},
+            ChannelIc({color:C.txt3,size:48}),e("h3",{style:{color:C.txt,fontWeight:400,marginTop:16}},"Kanäle"),
+            e("p",{style:{color:C.txt3,fontSize:13,maxWidth:250,margin:"8px auto 20px"}},"Folge Kanälen, um Updates zu erhalten."),
+            e("button",{style:{padding:"8px 20px",borderRadius:20,background:C.green,border:"none",color:"#fff",fontSize:14,cursor:"pointer"}},"Kanäle entdecken")
+          ):
+
+          // COMMUNITIES
+          e("div",{style:{padding:20,textAlign:"center",paddingTop:60}},
+            UsersIc({color:C.txt3,size:48}),e("h3",{style:{color:C.txt,fontWeight:400,marginTop:16}},"Communities"),
+            e("p",{style:{color:C.txt3,fontSize:13,maxWidth:260,margin:"8px auto 20px"}},"Kommuniziere mit Mitgliedern aus Gruppen."),
+            e("button",{style:{padding:"8px 20px",borderRadius:20,background:C.green,border:"none",color:"#fff",fontSize:14,cursor:"pointer"}},"Community starten")
+          )
+        )
+      )
+    ),
+
+    // Main
+    openChat?e(Convo,{key:openChat.id,chat:openChat,onBack:function(){setOpenChat(null)},onCall:function(){setCallInfo({contact:openChat,isVideo:false})},onVideoCall:function(){setCallInfo({contact:openChat,isVideo:true})}}):
+    e("div",{style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.deeper,borderLeft:"1px solid "+C.border}},
+      e("div",{style:{textAlign:"center"}},
+        e("div",{style:{width:100,height:100,borderRadius:24,background:C.green+"22",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px"}},e("span",{style:{fontSize:48,fontWeight:800,color:C.green}},"A")),
+        e("h2",{style:{fontSize:28,fontWeight:300,color:C.txt,margin:"0 0 10px"}},"Awi für Desktop"),
+        e("p",{style:{color:C.txt3,fontSize:14,maxWidth:380,margin:"0 auto 16px",lineHeight:1.6}},"Sende und empfange Nachrichten. Nutze Awi auf bis zu 4 verknüpften Geräten gleichzeitig."),
+        e("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:C.txt3,fontSize:13}},LockIc({color:C.txt3,size:14}),e("span",null,"Ende-zu-Ende-verschlüsselt"))
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(e(App));
+</script>
+</body>
+</html>
